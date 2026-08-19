@@ -1,10 +1,8 @@
 package com.steeplesoft.ticker;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Predicate;
+
+import com.steeplesoft.ticker.MarketTrackerController.DialogType;
 
 import dev.tamboui.layout.Constraint;
 import dev.tamboui.layout.Layout;
@@ -27,12 +25,10 @@ import dev.tamboui.widgets.block.Block;
 import dev.tamboui.widgets.block.BorderType;
 import dev.tamboui.widgets.block.Borders;
 import dev.tamboui.widgets.input.TextInput;
-import dev.tamboui.widgets.input.TextInputState;
 import dev.tamboui.widgets.paragraph.Paragraph;
 import dev.tamboui.widgets.table.Cell;
 import dev.tamboui.widgets.table.Row;
 import dev.tamboui.widgets.table.Table;
-import dev.tamboui.widgets.table.TableState;
 
 /**
  * A terminal market ticker built with TamboUI's immediate-mode API.
@@ -44,12 +40,7 @@ import dev.tamboui.widgets.table.TableState;
  * results back via {@link TuiRunner#runOnRenderThread(Runnable)}.
  */
 public class MarketTracker {
-    private final YahooFinanceClient client = new YahooFinanceClient();
-    private final TableState tableState = new TableState();
-    private final TextInputState inputState = new TextInputState();
-    private List<QuoteData> markets = List.of();
-    private List<QuoteData> quotes = List.of();
-    private DialogType currentDialogType = DialogType.NONE;
+    private final MarketTrackerController controller = new MarketTrackerController();
 
     static void main() throws Exception {
         new MarketTracker().run();
@@ -60,33 +51,18 @@ public class MarketTracker {
         // completing) rather than on a fixed timer.
         TuiConfig config = TuiConfig.builder().noTick().build();
         try (TuiRunner runner = TuiRunner.create(config)) {
-            tableState.selectFirst();
-            CompletableFuture.runAsync(() -> fetchQuotes(runner));
+            fetchQuotes(runner);
             runner.run(this::handleEvent, this::render);
         }
     }
 
     private void fetchQuotes(TuiRunner runner) {
-        try {
-            var response = client.getQuotes(List.of("^DJI", "^IXIC", "^GSPC", "ORCL", "IBM", "NVDA", "SPCX"));
-            Predicate<QuoteData> predicate = (QuoteData q) -> !q.symbol().startsWith("^") && !q.symbol().contains("=");
-            var fetchedMarkets = response.stream().filter(q -> !predicate.test(q)).toList();
-            var fetchedQuotes = response.stream().filter(predicate).toList();
-            // Publish the results on the render thread, then force an immediate redraw so the freshly
-            // fetched data appears without waiting for the next input event.
-            runner.runOnRenderThread(() -> {
-                markets = fetchedMarkets;
-                quotes = fetchedQuotes;
-                tableState.selectFirst();
-                runner.draw(this::render);
-            });
-        } catch (IOException | URISyntaxException | InterruptedException e) {
-            // Surface the failure through TuiRunner's error display instead of dying silently on the
-            // background thread.
-            runner.runOnRenderThread(() -> {
-                throw new RuntimeException(e);
-            });
-        }
+        // Publish the results on the render thread, then force an immediate redraw so the freshly
+        // fetched data appears without waiting for the next input event.
+        runner.runOnRenderThread(() -> {
+            controller.refreshQuotes();
+            runner.draw(this::render);
+        });
     }
 
     private void render(Frame frame) {
@@ -105,7 +81,7 @@ public class MarketTracker {
                 Paragraph.builder().text("Press 'q' to quit").style(Style.EMPTY.dim()).build(),
                 rows.get(2));
 
-        if (currentDialogType == DialogType.ADD_STOCK) {
+        if (controller.currentDialog() == DialogType.ADD_STOCK) {
             renderAddStockDialog(frame, area);
         }
     }
@@ -114,19 +90,19 @@ public class MarketTracker {
         if (!(event instanceof KeyEvent key)) {
             return false;
         }
-        if (currentDialogType == DialogType.ADD_STOCK) {
+        if (controller.currentDialog() == DialogType.ADD_STOCK) {
             return handleDialogKey(key);
         }
         if (key.isDown()) {
-            tableState.selectNext(quotes.size());
+            controller.tableState().selectNext(controller.getQuotes().size());
             return true;
         }
         if (key.isUp()) {
-            tableState.selectPrevious();
+            controller.tableState().selectPrevious();
             return true;
         }
         if (key.isCharIgnoreCase('+')) {
-            currentDialogType = DialogType.ADD_STOCK;
+            controller.promptAddStock();
             return true;
         }
         if (key.isCharIgnoreCase('q')) {
@@ -138,28 +114,28 @@ public class MarketTracker {
 
     private boolean handleDialogKey(KeyEvent key) {
         if (key.isCancel() || key.code() == KeyCode.ESCAPE) {
-            dismissDialog();
+            controller.dismissDialog();
             return true;
         }
         if (key.isConfirm() || key.code() == KeyCode.ENTER) {
             addStock();
-            dismissDialog();
+            controller.dismissDialog();
             return true;
         }
         if (key.isDeleteBackward() || key.code() == KeyCode.BACKSPACE) {
-            inputState.deleteBackward();
+            controller.inputState().deleteBackward();
             return true;
         }
         if (key.isLeft()) {
-            inputState.moveCursorLeft();
+            controller.inputState().moveCursorLeft();
             return true;
         }
         if (key.isRight()) {
-            inputState.moveCursorRight();
+            controller.inputState().moveCursorRight();
             return true;
         }
         if (key.code() == KeyCode.CHAR) {
-            inputState.insert(key.string());
+            controller.inputState().insert(key.string());
             return true;
         }
         return false;
@@ -167,7 +143,7 @@ public class MarketTracker {
 
     private void renderMarkets(Frame frame, Rect area) {
         Block block = Block.builder().title("Markets").borders(Borders.ALL).build();
-        List<Line> lines = markets.stream()
+        List<Line> lines = controller.getMarkets().stream()
                 .map(m -> {
                     Style changeStyle = m.percentChange() >= 0
                             ? Style.EMPTY.fg(Color.GREEN)
@@ -231,11 +207,11 @@ public class MarketTracker {
                 .highlightSymbol("▶ ")
                 .block(Block.builder().title("Stocks").borders(Borders.ALL).build())
                 .build();
-        frame.renderStatefulWidget(table, area, tableState);
+        frame.renderStatefulWidget(table, area, controller.tableState());
     }
 
     private List<Row> rowsFromQuote() {
-        return quotes.stream()
+        return controller.getQuotes().stream()
                 .filter(q -> !q.symbol().startsWith("^") && !q.symbol().contains("="))
                 .map(q -> Row.from(
                         Cell.from(q.symbol()).style(Style.EMPTY.bold()),
@@ -271,13 +247,13 @@ public class MarketTracker {
     }
 
     private void renderAddStockDialog(Frame frame, Rect area) {
-        int width = Math.min(50, Math.max(20, area.width() - 2));
+        int width = Math.clamp(area.width() - 2, 20, 50);
         int height = 5;
         int x = area.x() + (area.width() - width) / 2;
         int y = area.y() + (area.height() - height) / 2;
         Rect dialogArea = Rect.of(new Position(x, y), new Size(width, height));
 
-        // Clear whatever is underneath so the dialog reads as a modal overlay.
+        // Clear whatever is underneath, so the dialog reads as a modal overlay.
         frame.renderWidget(Clear.INSTANCE, dialogArea);
 
         Block block = Block.builder()
@@ -305,7 +281,7 @@ public class MarketTracker {
         TextInput input = TextInput.builder()
                 .cursorStyle(Style.EMPTY.fg(Color.CYAN).reversed())
                 .build();
-        input.renderWithCursor(rows.get(1), frame.buffer(), inputState, frame);
+        input.renderWithCursor(rows.get(1), frame.buffer(), controller.inputState(), frame);
 
         frame.renderWidget(
                 Paragraph.builder().text("[Enter] Confirm  [Esc] Cancel").style(Style.EMPTY.dim()).build(),
@@ -316,19 +292,4 @@ public class MarketTracker {
         // TODO: add the entered symbol (inputState.text()) to the tracked quotes and refetch.
     }
 
-    private void dismissDialog() {
-        currentDialogType = DialogType.NONE;
-        inputState.clear();
-    }
-
-    public enum DialogType {
-        /**
-         * No dialog is currently shown.
-         */
-        NONE,
-        /**
-         * The "add stock" input dialog is shown.
-         */
-        ADD_STOCK
-    }
 }
