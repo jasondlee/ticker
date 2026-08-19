@@ -45,10 +45,14 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- For Toolkit DSL (recommended) -->
+        <!-- Immediate mode: TuiRunner + widgets rendered directly to a Frame -->
         <dependency>
             <groupId>dev.tamboui</groupId>
-            <artifactId>tamboui-toolkit</artifactId>
+            <artifactId>tamboui-tui</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.tamboui</groupId>
+            <artifactId>tamboui-widgets</artifactId>
         </dependency>
 
         <dependency>
