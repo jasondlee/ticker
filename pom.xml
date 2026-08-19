@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.steeplesoft</groupId>
+    <artifactId>ticker</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Ticker</name>
+    <description>Ticker</description>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>ossrh-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.tamboui</groupId>
+                <artifactId>tamboui-bom</artifactId>
+                <version>0.5.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- For Toolkit DSL (recommended) -->
+        <dependency>
+            <groupId>dev.tamboui</groupId>
+            <artifactId>tamboui-toolkit</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.tamboui</groupId>
+            <artifactId>tamboui-panama-backend</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.fory</groupId>
+            <artifactId>fory-json</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+
+        <!--
+            Conscrypt (BoringSSL) TLS provider. Yahoo Finance's edge rejects the JDK/JSSE TLS
+            fingerprint with HTTP 429; Conscrypt presents a Chrome-like ClientHello that Yahoo
+            accepts. See YahooFinanceClient for details.
+        -->
+        <dependency>
+            <groupId>org.conscrypt</groupId>
+            <artifactId>conscrypt-openjdk-uber</artifactId>
+            <version>2.6.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <mainClass>com.steeplesoft.ticker.MarketTracker</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
