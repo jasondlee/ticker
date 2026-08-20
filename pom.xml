@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.steeplesoft</groupId>
     <artifactId>ticker</artifactId>
-    <version>0.1</version>
+    <version>0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Ticker</name>
@@ -21,20 +19,11 @@
         <version.tamboui>0.4.0</version.tamboui>
 
         <main.class>com.steeplesoft.ticker.TickerApp</main.class>
-    </properties>
 
-    <repositories>
-        <repository>
-            <id>ossrh-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
+        <scm.connection>git@github.com:jasondlee/ticker.git</scm.connection>
+
+        <repo.sonatype.url>https://central.sonatype.com</repo.sonatype.url>
+    </properties>
 
     <licenses>
         <license>
@@ -52,8 +41,8 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/jasondlee/ticker.git</connection>
-        <developerConnection>scm:git:ssh://github.com:jasondlee/ticker.git</developerConnection>
+        <connection>scm:git:${scm.connection}</connection>
+        <developerConnection>scm:git:${scm.connection}</developerConnection>
         <url>https://github.com/jasondlee/ticker/tree/master</url>
     </scm>
 
@@ -164,6 +153,14 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.5</version>
                 </plugin>
+                <!-- Skip execution of Maven Deploy Plugin due to usage of custom deploy plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <configuration>
+                        <skip>true</skip>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -207,6 +204,17 @@
                 <version>3.6.3</version>
                 <configuration>
                     <mainClass>${main.class}</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.11.0</version> <!-- or newer -->
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>false</autoPublish>
+                    <!-- optional: autoPublish, waitUntil, etc. -->
                 </configuration>
             </plugin>
         </plugins>
