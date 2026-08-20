@@ -5,13 +5,10 @@ import static dev.tamboui.toolkit.Toolkit.text;
 import static dev.tamboui.toolkit.Toolkit.textInput;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import dev.tamboui.layout.Constraint;
 import dev.tamboui.layout.Layout;
-import dev.tamboui.layout.Position;
 import dev.tamboui.layout.Rect;
-import dev.tamboui.layout.Size;
 import dev.tamboui.style.Color;
 import dev.tamboui.style.Style;
 import dev.tamboui.terminal.Frame;
@@ -20,15 +17,13 @@ import dev.tamboui.text.Span;
 import dev.tamboui.text.Text;
 import dev.tamboui.toolkit.element.Element;
 import dev.tamboui.toolkit.element.RenderContext;
+import dev.tamboui.toolkit.element.Size;
 import dev.tamboui.toolkit.elements.DialogElement;
 import dev.tamboui.toolkit.event.EventResult;
 import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
-import dev.tamboui.widgets.Clear;
 import dev.tamboui.widgets.block.Block;
-import dev.tamboui.widgets.block.BorderType;
 import dev.tamboui.widgets.block.Borders;
-import dev.tamboui.widgets.input.TextInput;
 import dev.tamboui.widgets.paragraph.Paragraph;
 import dev.tamboui.widgets.table.Cell;
 import dev.tamboui.widgets.table.Row;
@@ -36,8 +31,6 @@ import dev.tamboui.widgets.table.Table;
 
 public class MarketTrackerView implements Element {
     private final MarketTrackerController controller;
-    private DialogElement currentDialog;
-
 
     public MarketTrackerView(MarketTrackerController controller) {
         this.controller = controller;
@@ -68,18 +61,18 @@ public class MarketTrackerView implements Element {
             frame.renderWidget(panel, rows.get(1));
         }
         frame.renderWidget(
-                Paragraph.builder().text("Press 'q' to quit").style(Style.EMPTY.dim()).build(),
+                Paragraph.builder().text("[Up/Down] Navigate [+] Add stock [-] Remove stock [r] Refresh quotes [q] Quit").style(Style.EMPTY.dim()).build(),
                 rows.get(2));
 
         if (controller.currentDialog() == MarketTrackerController.DialogType.ADD_STOCK) {
-            currentDialog = createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock);
-            currentDialog.render(frame, area, context);
+            createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock)
+                .render(frame, area, context);
         }
     }
 
     @Override
-    public dev.tamboui.toolkit.element.Size preferredSize(int availableWidth, int availableHeight, RenderContext context) {
-        return dev.tamboui.toolkit.element.Size.UNKNOWN;
+    public Size preferredSize(int availableWidth, int availableHeight, RenderContext context) {
+        return Size.UNKNOWN;
     }
 
     @Override
@@ -243,48 +236,6 @@ public class MarketTrackerView implements Element {
     private Cell amountChangeCell(double value) {
         var style = value > 0 ? Style.EMPTY.fg(Color.GREEN) : Style.EMPTY.bold().fg(Color.RED);
         return Cell.from(String.format("$%,.2f", value)).style(style);
-    }
-
-    private void renderAddStockDialog(Frame frame, Rect area) {
-        int width = Math.clamp(area.width() - 2, 20, 50);
-        int height = 5;
-        int x = area.x() + (area.width() - width) / 2;
-        int y = area.y() + (area.height() - height) / 2;
-        Rect dialogArea = Rect.of(new Position(x, y), new Size(width, height));
-
-        // Clear whatever is underneath, so the dialog reads as a modal overlay.
-        frame.renderWidget(Clear.INSTANCE, dialogArea);
-
-        Block block = Block.builder()
-                .title("Add Stock")
-                .borders(Borders.ALL)
-                .borderType(BorderType.ROUNDED)
-                .borderColor(Color.CYAN)
-                .build();
-        frame.renderWidget(block, dialogArea);
-
-        Rect inner = block.inner(dialogArea);
-        if (inner.isEmpty()) {
-            return;
-        }
-        List<Rect> rows = Layout.vertical()
-                .constraints(
-                        Constraint.length(1), // Prompt
-                        Constraint.length(1), // Input
-                        Constraint.length(1)  // Hint
-                )
-                .split(inner);
-
-        frame.renderWidget(Paragraph.from("Enter ticker symbol"), rows.get(0));
-
-        TextInput input = TextInput.builder()
-                .cursorStyle(Style.EMPTY.fg(Color.CYAN).reversed())
-                .build();
-        input.renderWithCursor(rows.get(1), frame.buffer(), controller.inputState(), frame);
-
-        frame.renderWidget(
-                Paragraph.builder().text("[Enter] Confirm  [Esc] Cancel").style(Style.EMPTY.dim()).build(),
-                rows.get(2));
     }
 
     private DialogElement createInputDialog(String title, String prompt, Runnable onConfirm) {
