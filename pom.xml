@@ -7,7 +7,7 @@
 
     <groupId>com.steeplesoft</groupId>
     <artifactId>ticker</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.1</version>
     <packaging>jar</packaging>
 
     <name>Ticker</name>
@@ -17,6 +17,10 @@
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <version.tamboui>0.4.0</version.tamboui>
+
+        <main.class>com.steeplesoft.ticker.TickerApp</main.class>
     </properties>
 
     <repositories>
@@ -32,12 +36,33 @@
         </repository>
     </repositories>
 
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://spdx.org/licenses/Apache-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>jasondlee</id>
+            <name>Jason Lee</name>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/jasondlee/ticker.git</connection>
+        <developerConnection>scm:git:ssh://github.com:jasondlee/ticker.git</developerConnection>
+        <url>https://github.com/jasondlee/ticker/tree/master</url>
+    </scm>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>dev.tamboui</groupId>
                 <artifactId>tamboui-bom</artifactId>
-                <version>0.5.0-SNAPSHOT</version>
+                <version>${version.tamboui}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -58,7 +83,6 @@
             <groupId>dev.tamboui</groupId>
             <artifactId>tamboui-widgets</artifactId>
         </dependency>
-
         <dependency>
             <groupId>dev.tamboui</groupId>
             <artifactId>tamboui-panama-backend</artifactId>
@@ -83,16 +107,108 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.15.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.4</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.6.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.5.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.4</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>3.6.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.21.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.5</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-versions</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.9</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>${maven.compiler.release}</version>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>${main.class}</mainClass>
+                            <addClasspath>true</addClasspath>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
                 <configuration>
-                    <mainClass>com.steeplesoft.ticker.MarketTracker</mainClass>
+                    <mainClass>${main.class}</mainClass>
                 </configuration>
             </plugin>
         </plugins>
     </build>
-
 </project>

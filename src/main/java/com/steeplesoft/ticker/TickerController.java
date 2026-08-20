@@ -14,16 +14,16 @@ import java.util.function.Predicate;
 import dev.tamboui.widgets.input.TextInputState;
 import dev.tamboui.widgets.table.TableState;
 
-public class MarketTrackerController {
+public class TickerController {
     private final TableState tableState = new TableState();
     private final TextInputState inputState = new TextInputState();
     private final YahooFinanceClient client = new YahooFinanceClient();
     private final List<String> tickerSymbols = new ArrayList<>();
     private List<QuoteData> markets = List.of();
     private List<QuoteData> stocks = List.of();
-    private MarketTrackerController.DialogType currentDialog = MarketTrackerController.DialogType.NONE;
+    private TickerController.DialogType currentDialog = TickerController.DialogType.NONE;
 
-    public MarketTrackerController() {
+    public TickerController() {
         tableState.selectFirst();
         loadConfig();
         CompletableFuture.runAsync(this::refreshQuotes);
@@ -99,12 +99,12 @@ public class MarketTrackerController {
     }
 
     public void dismissDialog() {
-        currentDialog = MarketTrackerController.DialogType.NONE;
+        currentDialog = TickerController.DialogType.NONE;
         inputState.clear();
     }
 
     public void saveConfig() throws IOException {
-        File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".mtop");
+        File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".ticker");
         if (!config.exists()) {
             if (!config.createNewFile()) {
                 throw new IOException("Could not create config file");
@@ -116,14 +116,12 @@ public class MarketTrackerController {
 
     protected void loadConfig() {
         try {
-            File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".mtop");
+            File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".ticker");
             if (config.exists()) {
                 List<String> strings = Files.readAllLines(config.toPath());
                 strings.stream().filter(s -> s.startsWith("symbols="))
                     .findFirst()
-                    .ifPresent(s -> {
-                        tickerSymbols.addAll(List.of(s.substring(8).split(",")));
-                    });
+                    .ifPresent(s -> tickerSymbols.addAll(List.of(s.substring(8).split(","))));
             }
 
             if (tickerSymbols.isEmpty()) {

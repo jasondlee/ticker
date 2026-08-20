@@ -30,7 +30,7 @@ import dev.tamboui.tui.event.KeyEvent;
 import dev.tamboui.widgets.table.Cell;
 import dev.tamboui.widgets.table.Row;
 
-public class MarketTrackerView implements Element {
+public class TickerView implements Element {
     public static final String FORMAT_CURRENCY = "$%,.2f";
     public static final String FORMAT_PERCENT = "%,4.2f%%";
     public static final String FORMAT_VOLUME = "%,.2fM";
@@ -39,7 +39,7 @@ public class MarketTrackerView implements Element {
     public static final int WIDTH_PERCENT = 8;
     public static final int WIDTH_VOLUME = 11;
 
-    private final MarketTrackerController controller;
+    private final TickerController controller;
     private final List<String> stockTableHeaders = List.of(
             "Ticker",
             "Current Price",
@@ -58,7 +58,7 @@ public class MarketTrackerView implements Element {
             "MktCap"
     );
 
-    public MarketTrackerView(MarketTrackerController controller) {
+    public TickerView(TickerController controller) {
         this.controller = controller;
     }
 
@@ -71,11 +71,11 @@ public class MarketTrackerView implements Element {
     public void render(Frame frame, Rect area, RenderContext context) {
         Element ui = dock()
                 .top(header(), Constraint.length(3))
-                .center(quotes())
+                .center(stocks())
                 .bottom(footer(), Constraint.length(1));
         ui.render(frame, area, context);
 
-        if (controller.currentDialog() == MarketTrackerController.DialogType.ADD_STOCK) {
+        if (controller.currentDialog() == TickerController.DialogType.ADD_STOCK) {
             createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock)
                     .render(frame, area, context);
         }
@@ -83,7 +83,7 @@ public class MarketTrackerView implements Element {
 
     @Override
     public EventResult handleKeyEvent(KeyEvent event, boolean focused) {
-        if (controller.currentDialog() == MarketTrackerController.DialogType.ADD_STOCK) {
+        if (controller.currentDialog() == TickerController.DialogType.ADD_STOCK) {
             return handleDialogKey(event);
         }
         if (event.isDown()) {
@@ -129,7 +129,7 @@ public class MarketTrackerView implements Element {
                 .title("Markets");
     }
 
-    protected Element quotes() {
+    protected Element stocks() {
         return table()
                 .header(Row.from(stockTableHeaders.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
                         .style(Style.EMPTY.fg(Color.YELLOW)))
