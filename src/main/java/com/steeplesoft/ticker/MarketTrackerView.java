@@ -12,7 +12,6 @@ import static dev.tamboui.toolkit.Toolkit.textInput;
 import java.util.List;
 
 import dev.tamboui.layout.Constraint;
-import dev.tamboui.layout.Layout;
 import dev.tamboui.layout.Rect;
 import dev.tamboui.style.Color;
 import dev.tamboui.style.Style;
@@ -28,18 +27,50 @@ import dev.tamboui.toolkit.elements.RichTextElement;
 import dev.tamboui.toolkit.event.EventResult;
 import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
-import dev.tamboui.widgets.block.Block;
-import dev.tamboui.widgets.block.Borders;
-import dev.tamboui.widgets.paragraph.Paragraph;
 import dev.tamboui.widgets.table.Cell;
 import dev.tamboui.widgets.table.Row;
-import dev.tamboui.widgets.table.Table;
 
 public class MarketTrackerView implements Element {
+    public static final String FORMAT_CURRENCY = "$%,.2f";
+    public static final String FORMAT_PERCENT = "%,4.2f%%";
+    public static final String FORMAT_VOLUME = "%,.2fM";
+
+    public static final int WIDTH_CURRENCY = 13;
+    public static final int WIDTH_PERCENT = 8;
+    public static final int WIDTH_VOLUME = 11;
+
     private final MarketTrackerController controller;
+    private final List<String> stockTableHeaders = List.of(
+            "Ticker",
+            "Current Price",
+            "Change",
+            "Change%",
+            "Open",
+            "Low",
+            "High",
+            "52wk Low",
+            "52wk High",
+            "Volume",
+            "AvgVolume",
+            "P/E",
+            "Dividend",
+            "Yield",
+            "MktCap"
+    );
 
     public MarketTrackerView(MarketTrackerController controller) {
         this.controller = controller;
+    }
+
+    private static String marketCap(QuoteData quote) {
+        double marketCap = quote.marketCap() / 1_000_000; // Market cap in millions
+        if (marketCap > 1_000_000) {
+            return String.format("%,.2fT", (marketCap / 1_000_000));
+        }
+        if (marketCap > 1_000) {
+            return String.format("%,.2fB", (marketCap / 1_000));
+        }
+        return String.format(FORMAT_VOLUME, marketCap);
     }
 
     @Override
@@ -58,64 +89,42 @@ public class MarketTrackerView implements Element {
 
     protected Element header() {
         List<RichTextElement> lines = controller.markets().stream()
-                .map(m -> {
-                    Style changeStyle = m.percentChange() >= 0
-                            ? Style.EMPTY.fg(Color.GREEN)
-                            : Style.EMPTY.bold().fg(Color.RED);
-                    String label = m.name() != null ? m.name() : m.symbol();
-                    return richText(Text.from(Line.from(
-                                    new Span(String.format("%-14s ", label.trim()), Style.EMPTY.bold()),
-                                    Span.raw(String.format("%,.2f ", m.currentPrice())),
-                                    new Span(String.format("%+,.2f%%", m.percentChange()), changeStyle)
-                            )
-                    ));
-                })
+                .map(m -> richText(
+                        Text.from(
+                                Line.from(
+                                        Span.styled(m.name() != null ? m.name() : m.symbol(), Style.EMPTY.fg(Color.YELLOW).bold()),
+                                        Span.raw(String.format(" %,.2f", m.currentPrice())),
+                                        Span.styled(String.format(" %+,.2f%%", m.percentChange()), posNegStyle(m.percentChange()))
+                                )
+                        )))
                 .toList();
         return panel(flow(lines)
                 .spacing(1))
                 .title("Markets");
-
-//                block(Block.builder().title("Markets").borders(Borders.ALL).build())
     }
 
     protected Element quotes() {
-        List<String> headers = List.of(
-                "Ticker",
-                "Current",
-                "Change",
-                "Change%",
-                "Open",
-                "Low",
-                "High",
-                "52wk Low",
-                "52wk High",
-                "Volume",
-                "AvgVolume",
-                "P/E",
-                "Dividend",
-                "Yield",
-                "MktCap"
-        );
+        var list = controller.stocks().stream().map(s -> s.symbol().length()).toList();
         return table()
-                .header(Row.from(headers.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
+                .header(Row.from(stockTableHeaders.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
                         .style(Style.EMPTY.fg(Color.YELLOW)))
                 .widths(
                         Constraint.length(
                                 Math.max(8,
                                         controller.stocks().stream().map(s -> s.symbol().length()).max(Integer::compare).orElse(8))),
-                        Constraint.length(8), // Current
-                        Constraint.length(8), // Change
-                        Constraint.length(8), // Change %
-                        Constraint.length(9), // Open
-                        Constraint.length(9), // Low
-                        Constraint.length(9), // High
-                        Constraint.length(9), // 52wk Low
-                        Constraint.length(9), // 52wk High
-                        Constraint.length(8), // Volume
-                        Constraint.length(10), // Avg Volume
-                        Constraint.length(6), // P/E
-                        Constraint.length(9), // Dividend
-                        Constraint.length(6), // Yield
+                        Constraint.length(WIDTH_CURRENCY), // Current
+                        Constraint.length(WIDTH_CURRENCY), // Change
+                        Constraint.length(10), // Change %
+                        Constraint.length(WIDTH_CURRENCY), // Open
+                        Constraint.length(WIDTH_CURRENCY), // Low
+                        Constraint.length(WIDTH_CURRENCY), // High
+                        Constraint.length(WIDTH_CURRENCY), // 52 wk Low
+                        Constraint.length(WIDTH_CURRENCY), // 52 wk High
+                        Constraint.length(WIDTH_VOLUME), // Volume
+                        Constraint.length(WIDTH_VOLUME), // Avg Volume
+                        Constraint.length(7), // P/E
+                        Constraint.length(WIDTH_CURRENCY/2), // Dividend
+                        Constraint.length(7), // Yield
                         Constraint.fill()
                 )
                 .rows(rowsFromQuote())
@@ -127,40 +136,6 @@ public class MarketTrackerView implements Element {
 
     protected Element footer() {
         return text("[Up/Down] Navigate [+] Add stock [-] Remove stock [r] Refresh quotes [q] Quit").dim();
-    }
-
-//    @Override
-    public void render1(Frame frame, Rect area, RenderContext context) {
-        List<Rect> rows = Layout.vertical()
-                .constraints(
-                        Constraint.length(5), // Markets panel: top/bottom border + three index rows
-                        Constraint.fill(),    // Stocks table
-                        Constraint.length(1)  // Footer
-                )
-                .split(area);
-
-        renderMarkets(frame, rows.get(0));
-        if (!controller.stocks().isEmpty()) {
-            renderStocks(frame, rows.get(1));
-            if (controller.tableState().selected() > controller.stocks().size() - 1) {
-                controller.tableState().select(controller.stocks().size() - 1);
-            }
-        } else {
-            Block block = Block.builder().title("Stocks").borders(Borders.ALL).build();
-            Paragraph panel = Paragraph.builder()
-                    .block(block)
-                    .text(Text.from("Loading..."))
-                    .build();
-            frame.renderWidget(panel, rows.get(1));
-        }
-        frame.renderWidget(
-                Paragraph.builder().text("[Up/Down] Navigate [+] Add stock [-] Remove stock [r] Refresh quotes [q] Quit").style(Style.EMPTY.dim()).build(),
-                rows.get(2));
-
-        if (controller.currentDialog() == MarketTrackerController.DialogType.ADD_STOCK) {
-            createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock)
-                    .render(frame, area, context);
-        }
     }
 
     @Override
@@ -228,73 +203,6 @@ public class MarketTrackerView implements Element {
         return EventResult.UNHANDLED;
     }
 
-    private void renderMarkets(Frame frame, Rect area) {
-        List<Line> lines = controller.markets().stream()
-                .map(m -> {
-                    Style changeStyle = m.percentChange() >= 0
-                            ? Style.EMPTY.fg(Color.GREEN)
-                            : Style.EMPTY.bold().fg(Color.RED);
-                    String label = m.name() != null ? m.name() : m.symbol();
-                    return Line.from(
-                            new Span(String.format("%-14s ", label), Style.EMPTY.bold()),
-                            Span.raw(String.format("%,.2f ", m.currentPrice())),
-                            new Span(String.format("%+,.2f%%", m.percentChange()), changeStyle)
-                    );
-                })
-                .toList();
-        Paragraph panel = Paragraph.builder()
-                .block(Block.builder().title("Markets").borders(Borders.ALL).build())
-                .text(Text.from(lines))
-                .build();
-        frame.renderWidget(panel, area);
-    }
-
-    private void renderStocks(Frame frame, Rect area) {
-        List<String> headers = List.of(
-                "Ticker",
-                "Current",
-                "Change",
-                "Change%",
-                "Open",
-                "Low",
-                "High",
-                "52wk Low",
-                "52wk High",
-                "Volume",
-                "AvgVolume",
-                "P/E",
-                "Dividend",
-                "Yield",
-                "MktCap"
-        );
-        Table table = Table.builder()
-                .header(Row.from(headers.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
-                        .style(Style.EMPTY.fg(Color.YELLOW)))
-                .widths(
-                        Constraint.length(6), // Symbol
-                        Constraint.length(8), // Current
-                        Constraint.length(8), // Change
-                        Constraint.length(8), // Change %
-                        Constraint.length(9), // Open
-                        Constraint.length(9), // Low
-                        Constraint.length(9), // High
-                        Constraint.length(9), // 52wk Low
-                        Constraint.length(9), // 52wk High
-                        Constraint.length(8), // Volume
-                        Constraint.length(10), // Avg Volume
-                        Constraint.length(6), // P/E
-                        Constraint.length(9), // Dividend
-                        Constraint.length(6), // Yield
-                        Constraint.fill()
-                )
-                .rows(rowsFromQuote())
-                .highlightStyle(Style.EMPTY.bg(Color.BLUE).fg(Color.WHITE).bold())
-                .highlightSymbol("▶ ")
-                .block(Block.builder().title("Stocks").borders(Borders.ALL).build())
-                .build();
-        frame.renderStatefulWidget(table, area, controller.tableState());
-    }
-
     private List<Row> rowsFromQuote() {
         return controller.stocks().stream()
                 .filter(q -> !q.symbol().startsWith("^") && !q.symbol().contains("="))
@@ -308,38 +216,26 @@ public class MarketTrackerView implements Element {
                         dollarCell(q.high()),
                         dollarCell(q.low52()),
                         dollarCell(q.high52()),
-                        Cell.from(String.format("%,.2fM", q.volume() / 1_000_000)),
-                        Cell.from(String.format("%,.2fM", q.averageVolume() / 1_000_000)),
-                        Cell.from(String.format("%,.2f", q.peRatio())),
-                        dollarCell(q.dividend()),
-                        Cell.from(String.format("%,.2f%%", q.yield())),
-                        Cell.from(marketCap(q))
+                        Cell.from(pad(String.format(FORMAT_VOLUME, q.volume() / 1_000_000), WIDTH_VOLUME)),
+                        Cell.from(pad(String.format(FORMAT_VOLUME, q.averageVolume() / 1_000_000), WIDTH_VOLUME)),
+                        Cell.from(pad(String.format("%,.2f", q.peRatio()), 6)),
+                        Cell.from(pad(String.format(FORMAT_CURRENCY, q.dividend()), WIDTH_CURRENCY/2)),
+                        Cell.from(pad(String.format(FORMAT_PERCENT, q.yield()), 7)),
+                        Cell.from(pad(marketCap(q), 7))
                 )).toList();
     }
 
-    private static String marketCap(QuoteData quote) {
-        double marketCap = quote.marketCap() / 1_000_000; // Market cap in millions
-        if (marketCap > 1_000_000) {
-            return String.format("%,.2fT", (marketCap / 1_000_000));
-        }
-        if (marketCap > 1_000) {
-            return String.format("%,.2fB", (marketCap / 1_000));
-        }
-        return String.format("%,.2fM", marketCap);
-    }
-
     private Cell percentageCell(double value) {
-        var style = value > 0 ? Style.EMPTY.fg(Color.GREEN) : Style.EMPTY.bold().fg(Color.RED);
-        return Cell.from(String.format("%,.2f%%", value)).style(style);
+        return Cell.from(pad(String.format(FORMAT_PERCENT, value), WIDTH_PERCENT))
+                .style(posNegStyle(value));
     }
 
     private Cell dollarCell(double value) {
-        return Cell.from(String.format("$%,.2f", value));
+        return Cell.from(pad(String.format(FORMAT_CURRENCY, value), WIDTH_CURRENCY));
     }
 
     private Cell amountChangeCell(double value) {
-        var style = value > 0 ? Style.EMPTY.fg(Color.GREEN) : Style.EMPTY.bold().fg(Color.RED);
-        return Cell.from(String.format("$%,.2f", value)).style(style);
+        return Cell.from(pad(String.format(FORMAT_CURRENCY, value), WIDTH_CURRENCY)).style(posNegStyle(value));
     }
 
     private DialogElement createInputDialog(String title, String prompt, Runnable onConfirm) {
@@ -352,5 +248,13 @@ public class MarketTrackerView implements Element {
                 .width(Math.max(50, prompt.length() + 4))
                 .onConfirm(onConfirm)
                 .onCancel(controller::dismissDialog);
+    }
+
+    private String pad(String source, int width) {
+        return String.format("%%%ds".formatted(width), source);
+    }
+
+    private Style posNegStyle(double value) {
+        return value > 0 ? Style.EMPTY.fg(Color.GREEN) : Style.EMPTY.bold().fg(Color.RED);
     }
 }
