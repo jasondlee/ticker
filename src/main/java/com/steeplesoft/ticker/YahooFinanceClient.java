@@ -1,6 +1,7 @@
 package com.steeplesoft.ticker;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpCookie;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,6 +15,7 @@ import java.security.KeyStore;
 import java.security.Provider;
 import java.time.Duration;
 import java.util.List;
+import java.util.Properties;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
@@ -48,9 +50,10 @@ public class YahooFinanceClient implements AutoCloseable {
             "&range=1d&interval=5m&indicators=close&includeTimestamps=false&includePrePost=false"
                     + "&corsDomain=finance.yahoo.com&.tsrc=finance";
 
-    // Yahoo rejects requests without a browser-like User-Agent.
-    private static final String USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0";
+    // Yahoo rejects requests without a browser-like User-Agent. I've tried a fake one, but it seemed to reject that,
+    // so we'll just masquerade as Firefox.
+    private final String USER_AGENT =
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:154.0) Gecko/20100101 Firefox/154.0";
 
     private static final int HTTP_OK = 200;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
@@ -169,7 +172,7 @@ public class YahooFinanceClient implements AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         httpClient.close();
     }
 }

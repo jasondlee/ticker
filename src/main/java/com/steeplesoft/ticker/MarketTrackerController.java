@@ -26,21 +26,19 @@ public class MarketTrackerController {
     public MarketTrackerController() {
         tableState.selectFirst();
         loadConfig();
-
         CompletableFuture.runAsync(this::refreshQuotes);
     }
 
     public void refreshQuotes() {
-        List<QuoteData> response = null;
         try {
-            response = client.getQuotes(tickerSymbols);
+            List<QuoteData> response = client.getQuotes(tickerSymbols);
+
+            Predicate<QuoteData> predicate = (QuoteData q) -> !q.symbol().startsWith("^") && !q.symbol().contains("=");
+            markets = response.stream().filter(q -> !predicate.test(q)).toList();
+            stocks = response.stream().filter(predicate).toList();
         } catch (IOException | InterruptedException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
-
-        Predicate<QuoteData> predicate = (QuoteData q) -> !q.symbol().startsWith("^") && !q.symbol().contains("=");
-        markets = response.stream().filter(q -> !predicate.test(q)).toList();
-        stocks = response.stream().filter(predicate).toList();
     }
 
     public List<QuoteData> markets() {
@@ -105,7 +103,18 @@ public class MarketTrackerController {
         inputState.clear();
     }
 
-    private void loadConfig() {
+    public void saveConfig() throws IOException {
+        File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".mtop");
+        if (!config.exists()) {
+            if (!config.createNewFile()) {
+                throw new IOException("Could not create config file");
+            }
+        }
+        tickerSymbols.sort(Comparator.naturalOrder());
+        Files.writeString(config.toPath(), "symbols=" + String.join(",", tickerSymbols));
+    }
+
+    protected void loadConfig() {
         try {
             File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".mtop");
             if (config.exists()) {
@@ -124,17 +133,6 @@ public class MarketTrackerController {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public void saveConfig() throws IOException {
-        File config = new File(Path.of(System.getProperty("user.home")).toFile(), ".mtop");
-        if (!config.exists()) {
-            if (!config.createNewFile()) {
-                throw new IOException("Could not create config file");
-            }
-        }
-        tickerSymbols.sort(Comparator.naturalOrder());
-        Files.writeString(config.toPath(), "symbols=" + String.join(",", tickerSymbols));
     }
 
     public enum DialogType {

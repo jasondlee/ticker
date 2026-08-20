@@ -62,15 +62,9 @@ public class MarketTrackerView implements Element {
         this.controller = controller;
     }
 
-    private static String marketCap(QuoteData quote) {
-        double marketCap = quote.marketCap() / 1_000_000; // Market cap in millions
-        if (marketCap > 1_000_000) {
-            return String.format("%,.2fT", (marketCap / 1_000_000));
-        }
-        if (marketCap > 1_000) {
-            return String.format("%,.2fB", (marketCap / 1_000));
-        }
-        return String.format(FORMAT_VOLUME, marketCap);
+    @Override
+    public Size preferredSize(int availableWidth, int availableHeight, RenderContext context) {
+        return Size.UNKNOWN;
     }
 
     @Override
@@ -85,62 +79,6 @@ public class MarketTrackerView implements Element {
             createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock)
                     .render(frame, area, context);
         }
-    }
-
-    protected Element header() {
-        List<RichTextElement> lines = controller.markets().stream()
-                .map(m -> richText(
-                        Text.from(
-                                Line.from(
-                                        Span.styled(m.name() != null ? m.name() : m.symbol(), Style.EMPTY.fg(Color.YELLOW).bold()),
-                                        Span.raw(String.format(" %,.2f", m.currentPrice())),
-                                        Span.styled(String.format(" %+,.2f%%", m.percentChange()), posNegStyle(m.percentChange()))
-                                )
-                        )))
-                .toList();
-        return panel(flow(lines)
-                .spacing(1))
-                .title("Markets");
-    }
-
-    protected Element quotes() {
-        var list = controller.stocks().stream().map(s -> s.symbol().length()).toList();
-        return table()
-                .header(Row.from(stockTableHeaders.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
-                        .style(Style.EMPTY.fg(Color.YELLOW)))
-                .widths(
-                        Constraint.length(
-                                Math.max(8,
-                                        controller.stocks().stream().map(s -> s.symbol().length()).max(Integer::compare).orElse(8))),
-                        Constraint.length(WIDTH_CURRENCY), // Current
-                        Constraint.length(WIDTH_CURRENCY), // Change
-                        Constraint.length(10), // Change %
-                        Constraint.length(WIDTH_CURRENCY), // Open
-                        Constraint.length(WIDTH_CURRENCY), // Low
-                        Constraint.length(WIDTH_CURRENCY), // High
-                        Constraint.length(WIDTH_CURRENCY), // 52 wk Low
-                        Constraint.length(WIDTH_CURRENCY), // 52 wk High
-                        Constraint.length(WIDTH_VOLUME), // Volume
-                        Constraint.length(WIDTH_VOLUME), // Avg Volume
-                        Constraint.length(7), // P/E
-                        Constraint.length(WIDTH_CURRENCY/2), // Dividend
-                        Constraint.length(7), // Yield
-                        Constraint.fill()
-                )
-                .rows(rowsFromQuote())
-                .highlightStyle(Style.EMPTY.bg(Color.BLUE).fg(Color.WHITE).bold())
-                .highlightSymbol("▶ ")
-                .title("Stocks")
-                .state(controller.tableState());
-    }
-
-    protected Element footer() {
-        return text("[Up/Down] Navigate [+] Add stock [-] Remove stock [r] Refresh quotes [q] Quit").dim();
-    }
-
-    @Override
-    public Size preferredSize(int availableWidth, int availableHeight, RenderContext context) {
-        return Size.UNKNOWN;
     }
 
     @Override
@@ -173,6 +111,56 @@ public class MarketTrackerView implements Element {
             return EventResult.HANDLED;
         }
         return EventResult.UNHANDLED;
+    }
+
+    protected Element header() {
+        List<RichTextElement> lines = controller.markets().stream()
+                .map(m -> richText(
+                        Text.from(
+                                Line.from(
+                                        Span.styled(m.name() != null ? m.name() : m.symbol(), Style.EMPTY.fg(Color.YELLOW).bold()),
+                                        Span.raw(String.format(" %,.2f", m.currentPrice())),
+                                        Span.styled(String.format(" %+,.2f%%", m.percentChange()), posNegStyle(m.percentChange()))
+                                )
+                        )))
+                .toList();
+        return panel(flow(lines)
+                .spacing(1))
+                .title("Markets");
+    }
+
+    protected Element quotes() {
+        return table()
+                .header(Row.from(stockTableHeaders.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
+                        .style(Style.EMPTY.fg(Color.YELLOW)))
+                .widths(
+                        Constraint.length(
+                                Math.max(8,
+                                        controller.stocks().stream().map(s -> s.symbol().length()).max(Integer::compare).orElse(8))),
+                        Constraint.length(WIDTH_CURRENCY), // Current
+                        Constraint.length(WIDTH_CURRENCY), // Change
+                        Constraint.length(10), // Change %
+                        Constraint.length(WIDTH_CURRENCY), // Open
+                        Constraint.length(WIDTH_CURRENCY), // Low
+                        Constraint.length(WIDTH_CURRENCY), // High
+                        Constraint.length(WIDTH_CURRENCY), // 52 wk Low
+                        Constraint.length(WIDTH_CURRENCY), // 52 wk High
+                        Constraint.length(WIDTH_VOLUME), // Volume
+                        Constraint.length(WIDTH_VOLUME), // Avg Volume
+                        Constraint.length(7), // P/E
+                        Constraint.length(WIDTH_CURRENCY/2), // Dividend
+                        Constraint.length(7), // Yield
+                        Constraint.fill()
+                )
+                .rows(rowsFromQuote())
+                .highlightStyle(Style.EMPTY.bg(Color.BLUE).fg(Color.WHITE).bold())
+                .highlightSymbol("▶ ")
+                .title("Stocks")
+                .state(controller.tableState());
+    }
+
+    protected Element footer() {
+        return text("[Up/Down] Navigate [+] Add stock [-] Remove stock [r] Refresh quotes [q] Quit").dim();
     }
 
     private EventResult handleDialogKey(KeyEvent key) {
@@ -236,6 +224,17 @@ public class MarketTrackerView implements Element {
 
     private Cell amountChangeCell(double value) {
         return Cell.from(pad(String.format(FORMAT_CURRENCY, value), WIDTH_CURRENCY)).style(posNegStyle(value));
+    }
+
+    private String marketCap(QuoteData quote) {
+        double marketCap = quote.marketCap() / 1_000_000; // Market cap in millions
+        if (marketCap > 1_000_000) {
+            return String.format("%,.2fT", (marketCap / 1_000_000));
+        }
+        if (marketCap > 1_000) {
+            return String.format("%,.2fB", (marketCap / 1_000));
+        }
+        return String.format(FORMAT_VOLUME, marketCap);
     }
 
     private DialogElement createInputDialog(String title, String prompt, Runnable onConfirm) {
