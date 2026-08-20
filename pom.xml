@@ -10,6 +10,7 @@
 
     <name>Ticker</name>
     <description>Ticker</description>
+    <url>https://jasondl.ee</url>
 
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
