@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
@@ -117,7 +118,7 @@ public class MarketTrackerController {
             }
 
             if (tickerSymbols.isEmpty()) {
-                tickerSymbols.addAll(List.of("^DJI", "^IXIC", "^GSPC", "IBM"));
+                tickerSymbols.addAll(List.of("^DJI", "^GSPC", "^IXIC", "IBM"));
                 saveConfig();
             }
         } catch (IOException e) {
@@ -132,6 +133,7 @@ public class MarketTrackerController {
                 throw new IOException("Could not create config file");
             }
         }
+        tickerSymbols.sort(Comparator.naturalOrder());
         Files.writeString(config.toPath(), "symbols=" + String.join(",", tickerSymbols));
     }
 

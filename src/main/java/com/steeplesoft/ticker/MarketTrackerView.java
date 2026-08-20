@@ -1,6 +1,11 @@
 package com.steeplesoft.ticker;
 
 import static dev.tamboui.toolkit.Toolkit.dialog;
+import static dev.tamboui.toolkit.Toolkit.dock;
+import static dev.tamboui.toolkit.Toolkit.flow;
+import static dev.tamboui.toolkit.Toolkit.panel;
+import static dev.tamboui.toolkit.Toolkit.richText;
+import static dev.tamboui.toolkit.Toolkit.table;
 import static dev.tamboui.toolkit.Toolkit.text;
 import static dev.tamboui.toolkit.Toolkit.textInput;
 
@@ -19,6 +24,7 @@ import dev.tamboui.toolkit.element.Element;
 import dev.tamboui.toolkit.element.RenderContext;
 import dev.tamboui.toolkit.element.Size;
 import dev.tamboui.toolkit.elements.DialogElement;
+import dev.tamboui.toolkit.elements.RichTextElement;
 import dev.tamboui.toolkit.event.EventResult;
 import dev.tamboui.tui.event.KeyCode;
 import dev.tamboui.tui.event.KeyEvent;
@@ -38,6 +44,93 @@ public class MarketTrackerView implements Element {
 
     @Override
     public void render(Frame frame, Rect area, RenderContext context) {
+        Element ui = dock()
+                .top(header(), Constraint.length(3))
+                .center(quotes())
+                .bottom(footer(), Constraint.length(1));
+        ui.render(frame, area, context);
+
+        if (controller.currentDialog() == MarketTrackerController.DialogType.ADD_STOCK) {
+            createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock)
+                    .render(frame, area, context);
+        }
+    }
+
+    protected Element header() {
+        List<RichTextElement> lines = controller.markets().stream()
+                .map(m -> {
+                    Style changeStyle = m.percentChange() >= 0
+                            ? Style.EMPTY.fg(Color.GREEN)
+                            : Style.EMPTY.bold().fg(Color.RED);
+                    String label = m.name() != null ? m.name() : m.symbol();
+                    return richText(Text.from(Line.from(
+                                    new Span(String.format("%-14s ", label.trim()), Style.EMPTY.bold()),
+                                    Span.raw(String.format("%,.2f ", m.currentPrice())),
+                                    new Span(String.format("%+,.2f%%", m.percentChange()), changeStyle)
+                            )
+                    ));
+                })
+                .toList();
+        return panel(flow(lines)
+                .spacing(1))
+                .title("Markets");
+
+//                block(Block.builder().title("Markets").borders(Borders.ALL).build())
+    }
+
+    protected Element quotes() {
+        List<String> headers = List.of(
+                "Ticker",
+                "Current",
+                "Change",
+                "Change%",
+                "Open",
+                "Low",
+                "High",
+                "52wk Low",
+                "52wk High",
+                "Volume",
+                "AvgVolume",
+                "P/E",
+                "Dividend",
+                "Yield",
+                "MktCap"
+        );
+        return table()
+                .header(Row.from(headers.stream().map(s -> Cell.from(s).style(Style.EMPTY.bold())).toList())
+                        .style(Style.EMPTY.fg(Color.YELLOW)))
+                .widths(
+                        Constraint.length(
+                                Math.max(8,
+                                        controller.stocks().stream().map(s -> s.symbol().length()).max(Integer::compare).orElse(8))),
+                        Constraint.length(8), // Current
+                        Constraint.length(8), // Change
+                        Constraint.length(8), // Change %
+                        Constraint.length(9), // Open
+                        Constraint.length(9), // Low
+                        Constraint.length(9), // High
+                        Constraint.length(9), // 52wk Low
+                        Constraint.length(9), // 52wk High
+                        Constraint.length(8), // Volume
+                        Constraint.length(10), // Avg Volume
+                        Constraint.length(6), // P/E
+                        Constraint.length(9), // Dividend
+                        Constraint.length(6), // Yield
+                        Constraint.fill()
+                )
+                .rows(rowsFromQuote())
+                .highlightStyle(Style.EMPTY.bg(Color.BLUE).fg(Color.WHITE).bold())
+                .highlightSymbol("▶ ")
+                .title("Stocks")
+                .state(controller.tableState());
+    }
+
+    protected Element footer() {
+        return text("[Up/Down] Navigate [+] Add stock [-] Remove stock [r] Refresh quotes [q] Quit").dim();
+    }
+
+//    @Override
+    public void render1(Frame frame, Rect area, RenderContext context) {
         List<Rect> rows = Layout.vertical()
                 .constraints(
                         Constraint.length(5), // Markets panel: top/bottom border + three index rows
@@ -66,7 +159,7 @@ public class MarketTrackerView implements Element {
 
         if (controller.currentDialog() == MarketTrackerController.DialogType.ADD_STOCK) {
             createInputDialog("Add Stock", "Enter stock symbol:", controller::addStock)
-                .render(frame, area, context);
+                    .render(frame, area, context);
         }
     }
 
@@ -220,8 +313,19 @@ public class MarketTrackerView implements Element {
                         Cell.from(String.format("%,.2f", q.peRatio())),
                         dollarCell(q.dividend()),
                         Cell.from(String.format("%,.2f%%", q.yield())),
-                        Cell.from(String.format("%,.2fB", (q.marketCap() / 1_000_000_000)))
+                        Cell.from(marketCap(q))
                 )).toList();
+    }
+
+    private static String marketCap(QuoteData quote) {
+        double marketCap = quote.marketCap() / 1_000_000; // Market cap in millions
+        if (marketCap > 1_000_000) {
+            return String.format("%,.2fT", (marketCap / 1_000_000));
+        }
+        if (marketCap > 1_000) {
+            return String.format("%,.2fB", (marketCap / 1_000));
+        }
+        return String.format("%,.2fM", marketCap);
     }
 
     private Cell percentageCell(double value) {
