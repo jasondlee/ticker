@@ -4,7 +4,7 @@
 
     <groupId>com.steeplesoft</groupId>
     <artifactId>ticker</artifactId>
-    <version>0.1</version>
+    <version>0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Ticker</name>
@@ -43,7 +43,7 @@
         <connection>scm:git:${scm.connection}</connection>
         <developerConnection>scm:git:${scm.connection}</developerConnection>
         <url>https://github.com/jasondlee/ticker/tree/master</url>
-      <tag>v0.1</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <dependencyManagement>
