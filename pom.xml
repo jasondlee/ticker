@@ -204,17 +204,6 @@
                     <mainClass>${mainClass}</mainClass>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.11.0</version> <!-- or newer -->
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <autoPublish>false</autoPublish>
-                    <!-- optional: autoPublish, waitUntil, etc. -->
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
