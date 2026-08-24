@@ -6,7 +6,7 @@ import dev.tamboui.toolkit.app.ToolkitRunner;
 import dev.tamboui.tui.TuiConfig;
 
 public class TickerApp {
-    static void main() throws Exception {
+    public static void main(String... args) throws Exception {
         TickerController controller = new TickerController();
         TickerView view = new TickerView(controller);
         TuiConfig config = TuiConfig.builder()
